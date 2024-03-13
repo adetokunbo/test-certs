@@ -1,7 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -27,6 +26,11 @@ module Test.Certs.Temp (
   withCertPaths,
   keyPath,
   certificatePath,
+  generateAndStoreSSL,
+  generateAndStoreSSL',
+  withCertPathsInTmpSSL',
+  withCertPathsInTmpSSL,
+  withCertPathsSSL,
 ) where
 
 import Control.Exception (ErrorCall (..), throwIO)
@@ -47,6 +51,7 @@ import Data.Maybe (fromMaybe)
 import Data.PEM (PEM (PEM), pemWriteBS)
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Data.Time (UTCTime, addUTCTime, getCurrentTime, nominalDay)
 import Data.X509 (
   Certificate (..),
   DistinguishedName (DistinguishedName),
@@ -60,8 +65,10 @@ import Data.X509 (
   objectToSignedExactF,
  )
 import Numeric.Natural (Natural)
+import qualified OpenSSL.PEM as SSL
 import qualified OpenSSL.RSA as SSL
 import qualified OpenSSL.Random as SSL
+import qualified OpenSSL.X509 as SSL
 import System.FilePath ((</>))
 import System.IO.Temp (getCanonicalTemporaryDirectory, withTempDirectory)
 import Time.System (dateCurrent)
@@ -148,6 +155,13 @@ validityNow' ndays = do
   pure (start, end)
 
 
+validityNow :: Natural -> IO (UTCTime, UTCTime)
+validityNow ndays = do
+  start <- getCurrentTime
+  let end = (nominalDay * fromIntegral ndays) `addUTCTime` start
+  pure (start, end)
+
+
 -- | Like @generateAndStore@, but using default configuration
 generateAndStore' :: IO ()
 generateAndStore' = do
@@ -159,12 +173,10 @@ generateAndStore' = do
 generateAndStore :: CertPaths -> NameConfig -> IO ()
 generateAndStore cp nc = do
   (certificate, privKey) <- newCertificate nc
-  putStrLn "got certificate and private key"
   let alg = certSignatureAlg certificate
       signF = fmap (,alg) <$> signWithKeyAndAlg privKey
       rsaKey = encodeASN1' DER $ rsaToASN1 privKey
   signedCert <- encodeSignedObject <$> objectToSignedExactF signF certificate
-  putStrLn "signed certificate"
   storeCerts cp rsaKey signedCert
 
 
@@ -175,9 +187,7 @@ withCertPaths :: FilePath -> NameConfig -> (CertPaths -> IO a) -> IO a
 withCertPaths parentDir nc useSc =
   withTempDirectory parentDir "temp-certs" $ \cpDir -> do
     let sc = defaultBasenames cpDir
-    putStrLn "generating"
     generateAndStore sc nc
-    putStrLn $ "generated, will use " ++ show sc
     useSc sc
 
 
@@ -237,9 +247,7 @@ genRandomFields' = do
 newCertificate :: NameConfig -> IO (Certificate, PrivateKey)
 newCertificate nc = do
   certValidity <- validityNow' $ ncDurationDays nc
-  putStrLn "got validity"
   (pubKey, privKey, certSerial) <- genRandomFields'
-  putStrLn "got random fields"
   let dName = fromConfig nc
       certificate =
         Certificate
@@ -289,3 +297,76 @@ rsaToASN1 privKey =
       , IntVal $ private_qinv privKey
       , End Sequence
       ]
+
+
+genCertsSSL :: NameConfig -> IO (String, String)
+genCertsSSL nc = do
+  -- set up values to use in the certificate fields
+  let mkSerialNum = BS.foldl (\a w -> a * 256 + fromIntegral w) 0
+  serialNumber <- mkSerialNum <$> SSL.randBytes 8
+  (start, end) <- validityNow $ ncDurationDays nc
+
+  -- generate an RSA key pair
+  kp <- SSL.generateRSAKey' testKeySize $ fromIntegral testExponent
+
+  -- create and sign a certificate using the private key of the key pair
+  cert <- SSL.newX509
+  SSL.setVersion cert 2
+  SSL.setSerialNumber cert serialNumber
+  SSL.setIssuerName cert [("CN", "haskell:test-certs")]
+  SSL.setSubjectName cert [("CN", "haskell:test-certs")]
+  SSL.setNotBefore cert start
+  SSL.setNotAfter cert end
+  SSL.setPublicKey cert kp
+  SSL.signX509 cert kp Nothing
+
+  -- the PEM representation of the private key
+  privString <- SSL.writePKCS8PrivateKey kp Nothing
+
+  -- the PEM representation of the certificate
+  certString <- SSL.writeX509 cert
+
+  pure (certString, privString)
+
+
+storeCertsSSL :: CertPaths -> String -> String -> IO ()
+storeCertsSSL cp rsaKey signedCert = do
+  writeFile (keyPath cp) rsaKey
+  writeFile (certificatePath cp) signedCert
+
+
+-- | Generate and store certificate files as specified as @'CertPaths'@
+generateAndStoreSSL :: CertPaths -> NameConfig -> IO ()
+generateAndStoreSSL cp nc = do
+  (certificate, privKey) <- genCertsSSL nc
+  storeCertsSSL cp privKey certificate
+
+
+-- | Like @generateAndStore@, but using default configuration
+generateAndStoreSSL' :: IO ()
+generateAndStoreSSL' = do
+  sc <- systemTmpStoreConfig
+  generateAndStoreSSL sc defaultNameConfig
+
+
+{- | Create certificates in a temporary directory below @parentDir@, specify the
+locations using a @CertPaths@, use them, then delete them
+-}
+withCertPathsSSL :: FilePath -> NameConfig -> (CertPaths -> IO a) -> IO a
+withCertPathsSSL parentDir nc useSc =
+  withTempDirectory parentDir "temp-certs" $ \cpDir -> do
+    let sc = defaultBasenames cpDir
+    generateAndStoreSSL sc nc
+    useSc sc
+
+
+-- | Like 'withCertPaths' with the system @TEMP@ dir as the @parentDir@
+withCertPathsInTmpSSL :: NameConfig -> (CertPaths -> IO a) -> IO a
+withCertPathsInTmpSSL nc action = do
+  parentDir <- getCanonicalTemporaryDirectory
+  withCertPathsSSL parentDir nc action
+
+
+-- | Like 'withCertPathsInTmp' using a default @'NameConfig'@
+withCertPathsInTmpSSL' :: (CertPaths -> IO a) -> IO a
+withCertPathsInTmpSSL' = withCertPathsInTmpSSL defaultNameConfig

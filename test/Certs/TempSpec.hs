@@ -16,9 +16,14 @@ import Test.Hspec
 
 spec :: Spec
 spec = describe "Temp" $ do
-  context "using credentialLoadX509 to load the generated certificates" $ do
-    it "succeed" $ do
-      withCertPathsInTmp' canLoad509 >>= (`shouldBe` True)
+  context "using credentialLoadX509 to load" $ do
+    context "the crypton generated certificates" $ do
+      it "should succeed" $ do
+        withCertPathsInTmp' canLoad509 >>= (`shouldBe` True)
+
+    context "the OpenSSL generated certificates" $ do
+      it "should succeed" $ do
+        withCertPathsInTmpSSL' canLoad509 >>= (`shouldBe` True)
 
 
 canLoad509 :: CertPaths -> IO Bool
