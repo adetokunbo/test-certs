@@ -8,15 +8,21 @@ SPDX-License-Identifier: BSD3
 -}
 module Certs.TempSpec (spec) where
 
-import Test.Hspec
+import Data.Either (isRight)
+import Network.TLS (credentialLoadX509)
 import Test.Certs.Temp
+import Test.Hspec
+
 
 spec :: Spec
 spec = describe "Temp" $ do
-  context "endsThen" $
-    it "should be a simple test" $ do
-      getIt `endsThen` (== (Just "a string"))
+  context "using credentialLoadX509 to load the generated certificates" $ do
+    it "succeed" $ do
+      withCertPathsInTmp' canLoad509 >>= (`shouldBe` True)
 
 
-getIt :: IO (Maybe String)
-getIt = pure $ Just "a string"
+canLoad509 :: CertPaths -> IO Bool
+canLoad509 cp = do
+  let cert = certificatePath cp
+      key = keyPath cp
+  isRight <$> credentialLoadX509 cert key
