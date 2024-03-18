@@ -6,9 +6,13 @@
 [![Hackage Dependencies][hackage-deps-badge]][hackage-deps]
 [![BSD3](https://img.shields.io/badge/license-BSD3-green.svg?dummy)](https://github.com/adetokunbo/test-certs/blob/master/LICENSE)
 
-This is a terse statement that describes the `test-certs` library
+test-certs provides functions that generate temporary SSL certificates for tests.
 
-This is a slightly longer statement that expands on the previous one.
+Its functions generate the certificates as files in a temporary directory
+
+Note: this package depends on <https://hackage.haskell.org/package/HsOpenSSL
+HsOpenSSL>. It expects the openssl system libraries to be available on your
+system; this is usually the case on most modern linux distributions.
 
 [hackage-deps-badge]: <https://img.shields.io/hackage-deps/v/test-certs.svg>
 [hackage-deps]:       <http://packdeps.haskellers.com/feed?needle=test-certs>
