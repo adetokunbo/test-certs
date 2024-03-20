@@ -19,7 +19,7 @@ spec = describe "Temp" $ do
   context "using credentialLoadX509 to load" $ do
     context "the generated certificates" $ do
       it "should succeed" $ do
-        withCertPathsInTmpSSL' canLoad509 >>= (`shouldBe` True)
+        withCertPathsInTmp' canLoad509 >>= (`shouldBe` True)
 
 
 canLoad509 :: CertPaths -> IO Bool

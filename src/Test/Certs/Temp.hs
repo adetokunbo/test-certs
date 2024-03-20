@@ -11,23 +11,24 @@ SPDX-License-Identifier: BSD3
 Provides functions and/or data types that allow configuration and generation of teemporary temporary certificates
 -}
 module Test.Certs.Temp (
-  -- * @NameConfig@
-  NameConfig (..),
-  defaultNameConfig,
+  -- * @Config@
+  Config (..),
+  defaultConfig,
 
   -- * @CertPath@
   CertPaths (..),
   keyPath,
   certificatePath,
-  generateAndStoreSSL,
-  generateAndStoreSSL',
-  withCertPathsInTmpSSL',
-  withCertPathsInTmpSSL,
-  withCertPathsSSL,
+  generateAndStore,
+  generateAndStore',
+  withCertPathsInTmp',
+  withCertPathsInTmp,
+  withCertPaths,
 ) where
 
 import qualified Data.ByteString as BS
 import Data.Text (Text)
+import qualified Data.Text as Text
 import Data.Time (UTCTime, addUTCTime, getCurrentTime, nominalDay)
 import Numeric.Natural (Natural)
 import qualified OpenSSL.PEM as SSL
@@ -60,8 +61,8 @@ certificatePath cp = cpDir cp </> cpCert cp
 {- | A @CertPaths@ using default basenames for the certificate files, and
 the system @TEMP@ directory
 -}
-systemTmpStoreConfig :: IO CertPaths
-systemTmpStoreConfig = defaultBasenames <$> getCanonicalTemporaryDirectory
+sysTmpCertPaths :: IO CertPaths
+sysTmpCertPaths = defaultBasenames <$> getCanonicalTemporaryDirectory
 
 
 {- | A @CertPaths using the default basenames for the certificate files
@@ -69,31 +70,36 @@ systemTmpStoreConfig = defaultBasenames <$> getCanonicalTemporaryDirectory
 @cpCert@ is @certificate.pem@
 -}
 defaultBasenames :: FilePath -> CertPaths
-defaultBasenames cpDir = CertPaths {cpDir, cpKey = "key.pem", cpCert = "certificate.pem"}
+defaultBasenames cpDir =
+  CertPaths
+    { cpDir
+    , cpKey = "key.pem"
+    , cpCert = "certificate.pem"
+    }
 
 
--- | Configure details of the information in the generated certificates
-data NameConfig = NameConfig
-  { ncCountry :: !Text
-  , ncProvince :: !Text
-  , ncCity :: !Text
-  , ncOrganization :: !Text
-  , ncTitle :: !Text
-  , ncDurationDays :: !Natural
+-- | Configure some details of the generated certificates
+data Config = Config
+  { cCountry :: !Text
+  , cProvince :: !Text
+  , cCity :: !Text
+  , cOrganization :: !Text
+  , cCommonName :: !Text
+  , cDurationDays :: !Natural
   }
   deriving (Eq, Show)
 
 
--- | A default value for @'NameConfig'@
-defaultNameConfig :: NameConfig
-defaultNameConfig =
-  NameConfig
-    { ncCountry = "Japan"
-    , ncProvince = "Fukuoka"
-    , ncCity = "Itoshima"
-    , ncOrganization = "haskell:test-certs"
-    , ncTitle = "localhost"
-    , ncDurationDays = 365
+-- | A default value for @'Config'@
+defaultConfig :: Config
+defaultConfig =
+  Config
+    { cCountry = "Japan"
+    , cProvince = "Fukuoka"
+    , cCity = "Itoshima"
+    , cOrganization = "haskell:test-certs"
+    , cCommonName = "localhost"
+    , cDurationDays = 365
     }
 
 
@@ -112,12 +118,12 @@ testExponent :: Integer
 testExponent = 257
 
 
-genCertsSSL :: NameConfig -> IO (String, String)
-genCertsSSL nc = do
+genCerts :: Config -> IO (String, String)
+genCerts nc = do
   -- set up values to use in the certificate fields
   let mkSerialNum = BS.foldl (\a w -> a * 256 + fromIntegral w) 0
   serialNumber <- mkSerialNum <$> SSL.randBytes 8
-  (start, end) <- validityNow $ ncDurationDays nc
+  (start, end) <- validityNow $ cDurationDays nc
 
   -- generate an RSA key pair
   kp <- SSL.generateRSAKey' testKeySize $ fromIntegral testExponent
@@ -142,44 +148,44 @@ genCertsSSL nc = do
   pure (certString, privString)
 
 
-storeCertsSSL :: CertPaths -> String -> String -> IO ()
-storeCertsSSL cp rsaKey signedCert = do
+storeCerts :: CertPaths -> String -> String -> IO ()
+storeCerts cp rsaKey signedCert = do
   writeFile (keyPath cp) rsaKey
   writeFile (certificatePath cp) signedCert
 
 
 -- | Generate and store certificate files as specified as @'CertPaths'@
-generateAndStoreSSL :: CertPaths -> NameConfig -> IO ()
-generateAndStoreSSL cp nc = do
-  (certificate, privKey) <- genCertsSSL nc
-  storeCertsSSL cp privKey certificate
+generateAndStore :: CertPaths -> Config -> IO ()
+generateAndStore cp config = do
+  (certificate, privKey) <- genCerts config
+  storeCerts cp privKey certificate
 
 
 -- | Like @generateAndStore@, but using default configuration
-generateAndStoreSSL' :: IO ()
-generateAndStoreSSL' = do
-  sc <- systemTmpStoreConfig
-  generateAndStoreSSL sc defaultNameConfig
+generateAndStore' :: IO ()
+generateAndStore' = do
+  sc <- sysTmpCertPaths
+  generateAndStore sc defaultConfig
 
 
 {- | Create certificates in a temporary directory below @parentDir@, specify the
 locations using a @CertPaths@, use them, then delete them
 -}
-withCertPathsSSL :: FilePath -> NameConfig -> (CertPaths -> IO a) -> IO a
-withCertPathsSSL parentDir nc useSc =
+withCertPaths :: FilePath -> Config -> (CertPaths -> IO a) -> IO a
+withCertPaths parentDir config useSc =
   withTempDirectory parentDir "temp-certs" $ \cpDir -> do
     let sc = defaultBasenames cpDir
-    generateAndStoreSSL sc nc
+    generateAndStore sc config
     useSc sc
 
 
 -- | Like 'withCertPaths' with the system @TEMP@ dir as the @parentDir@
-withCertPathsInTmpSSL :: NameConfig -> (CertPaths -> IO a) -> IO a
-withCertPathsInTmpSSL nc action = do
+withCertPathsInTmp :: Config -> (CertPaths -> IO a) -> IO a
+withCertPathsInTmp config action = do
   parentDir <- getCanonicalTemporaryDirectory
-  withCertPathsSSL parentDir nc action
+  withCertPaths parentDir config action
 
 
--- | Like 'withCertPathsInTmp' using a default @'NameConfig'@
-withCertPathsInTmpSSL' :: (CertPaths -> IO a) -> IO a
-withCertPathsInTmpSSL' = withCertPathsInTmpSSL defaultNameConfig
+-- | Like 'withCertPathsInTmp' using a default @'Config'@
+withCertPathsInTmp' :: (CertPaths -> IO a) -> IO a
+withCertPathsInTmp' = withCertPathsInTmp defaultConfig
