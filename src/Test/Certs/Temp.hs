@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 {- |
 Module      : Test.Certs.Temp
@@ -27,6 +28,7 @@ module Test.Certs.Temp (
 ) where
 
 import qualified Data.ByteString as BS
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time (UTCTime, addUTCTime, getCurrentTime, nominalDay)
@@ -80,10 +82,10 @@ defaultBasenames cpDir =
 
 -- | Configure some details of the generated certificates
 data Config = Config
-  { cCountry :: !Text
-  , cProvince :: !Text
-  , cCity :: !Text
-  , cOrganization :: !Text
+  { cCountry :: !(Maybe Text)
+  , cProvince :: !(Maybe Text)
+  , cCity :: !(Maybe Text)
+  , cOrganization :: !(Maybe Text)
   , cCommonName :: !Text
   , cDurationDays :: !Natural
   }
@@ -94,13 +96,25 @@ data Config = Config
 defaultConfig :: Config
 defaultConfig =
   Config
-    { cCountry = "Japan"
-    , cProvince = "Fukuoka"
-    , cCity = "Itoshima"
-    , cOrganization = "haskell:test-certs"
+    { cCountry = Nothing
+    , cProvince = Nothing
+    , cCity = Nothing
+    , cOrganization = Nothing
     , cCommonName = "localhost"
     , cDurationDays = 365
     }
+
+
+asDistinguished :: Config -> [(String, String)]
+asDistinguished c =
+  let dnMaybe k f = (fmap ((k,) . Text.unpack) . f)
+   in catMaybes
+        [ dnMaybe "C" cCountry c
+        , dnMaybe "ST" cProvince c
+        , dnMaybe "L" cCity c
+        , dnMaybe "O" cOrganization c
+        , dnMaybe "CN" (Just . cCommonName) c
+        ]
 
 
 validityNow :: Natural -> IO (UTCTime, UTCTime)
@@ -119,11 +133,12 @@ testExponent = 257
 
 
 genCerts :: Config -> IO (String, String)
-genCerts nc = do
+genCerts config = do
   -- set up values to use in the certificate fields
   let mkSerialNum = BS.foldl (\a w -> a * 256 + fromIntegral w) 0
+      distinguished = asDistinguished config
   serialNumber <- mkSerialNum <$> SSL.randBytes 8
-  (start, end) <- validityNow $ cDurationDays nc
+  (start, end) <- validityNow $ cDurationDays config
 
   -- generate an RSA key pair
   kp <- SSL.generateRSAKey' testKeySize $ fromIntegral testExponent
@@ -132,8 +147,8 @@ genCerts nc = do
   cert <- SSL.newX509
   SSL.setVersion cert 2
   SSL.setSerialNumber cert serialNumber
-  SSL.setIssuerName cert [("CN", "haskell:test-certs")]
-  SSL.setSubjectName cert [("CN", "haskell:test-certs")]
+  SSL.setIssuerName cert distinguished
+  SSL.setSubjectName cert distinguished
   SSL.setNotBefore cert start
   SSL.setNotAfter cert end
   SSL.setPublicKey cert kp
