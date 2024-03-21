@@ -21,9 +21,9 @@ module Test.Certs.Temp (
   keyPath,
   certificatePath,
   generateAndStore,
-  generateAndStore',
   withCertPathsInTmp',
   withCertPathsInTmp,
+  withCertFilenames,
   withCertPaths,
 ) where
 
@@ -60,13 +60,6 @@ certificatePath :: CertPaths -> FilePath
 certificatePath cp = cpDir cp </> cpCert cp
 
 
-{- | A @CertPaths@ using default basenames for the certificate files, and
-the system @TEMP@ directory
--}
-sysTmpCertPaths :: IO CertPaths
-sysTmpCertPaths = defaultBasenames <$> getCanonicalTemporaryDirectory
-
-
 {- | A @CertPaths using the default basenames for the certificate files
 @cpKey@ is @key.pem@
 @cpCert@ is @certificate.pem@
@@ -92,7 +85,7 @@ data Config = Config
   deriving (Eq, Show)
 
 
--- | A default value for @'Config'@
+-- | A default value for @'Config'@: CN=localhost, duration is 365 days.
 defaultConfig :: Config
 defaultConfig =
   Config
@@ -176,22 +169,25 @@ generateAndStore cp config = do
   storeCerts cp privKey certificate
 
 
--- | Like @generateAndStore@, but using default configuration
-generateAndStore' :: IO ()
-generateAndStore' = do
-  sc <- sysTmpCertPaths
-  generateAndStore sc defaultConfig
+-- | Like 'withCertPaths', but allows the @CertPath@ filenames to be specified
+withCertFilenames ::
+  (FilePath -> CertPaths) ->
+  FilePath ->
+  Config ->
+  (CertPaths -> IO a) ->
+  IO a
+withCertFilenames mkCertPath parentDir config useCerts =
+  withTempDirectory parentDir "temp-certs" $ \tmpDir -> do
+    let certPaths = mkCertPath tmpDir
+    generateAndStore certPaths config
+    useCerts certPaths
 
 
 {- | Create certificates in a temporary directory below @parentDir@, specify the
-locations using a @CertPaths@, use them, then delete them
+locations using @CertPaths@, use them, then delete them
 -}
 withCertPaths :: FilePath -> Config -> (CertPaths -> IO a) -> IO a
-withCertPaths parentDir config useSc =
-  withTempDirectory parentDir "temp-certs" $ \cpDir -> do
-    let sc = defaultBasenames cpDir
-    generateAndStore sc config
-    useSc sc
+withCertPaths = withCertFilenames defaultBasenames
 
 
 -- | Like 'withCertPaths' with the system @TEMP@ dir as the @parentDir@
