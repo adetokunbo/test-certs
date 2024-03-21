@@ -1,18 +1,19 @@
 cabal-version:      3.0
 name:               test-certs
 version:            0.1.0.0
-synopsis:           Functions that create temporary SSL certificates in tests
+synopsis:           create temporary SSL certificates in tests
 description:
-  Its functions generate the certificates as files in a temporary directory
-  Note: this package depends on <https://hackage.haskell.org/package/HsOpenSSL HsOpenSSL>.
-  It expects the openssl system libraries to be available on your system; this
-  is usually the case on most modern linux distributions.
+  Its functions generate the certificates as files in a temporary directory.
+
+  * Note: this package depends on [HsOpenSSL](https://hackage.haskell.org/package/HsOpenSSL).
+  * It expects the openssl system libraries to be available on your system, this
+    is usually the case on most modern linux distributions.
 
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Tim Emiola
 maintainer:         adetokunbo@emio.la
-category:           Web
+category:           Testing
 homepage:           https://github.com/adetokunbo/test-certs#readme
 bug-reports:        https://github.com/adetokunbo/test-certs/issues
 build-type:         Simple

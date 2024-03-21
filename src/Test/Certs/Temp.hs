@@ -9,22 +9,24 @@ Copyright   : (c) 2023 Tim Emiola
 Maintainer  : Tim Emiola <adetokunbo@emio.la>
 SPDX-License-Identifier: BSD3
 
-Provides functions and/or data types that allow configuration and generation of teemporary temporary certificates
+Enables configuration and generation of temporary certificates
 -}
 module Test.Certs.Temp
-  ( -- * @Config@
-    Config (..)
+  ( -- * generate certificates
+    withCertPaths
+  , withCertFilenames
+  , withCertPathsInTmp
+  , withCertPathsInTmp'
+  , generateAndStore
+
+    -- * configuration
+  , Config (..)
   , defaultConfig
 
-    -- * @CertPath@
+    -- * certificate filenames
   , CertPaths (..)
   , keyPath
   , certificatePath
-  , generateAndStore
-  , withCertPathsInTmp'
-  , withCertPathsInTmp
-  , withCertFilenames
-  , withCertPaths
   )
 where
 
@@ -45,8 +47,11 @@ import System.IO.Temp (getCanonicalTemporaryDirectory, withTempDirectory)
 -- | Specifies the location to write the temporary certificates
 data CertPaths = CertPaths
   { cpKey :: !FilePath
+  -- ^ the basename of the private key file
   , cpCert :: !FilePath
+  -- ^ the basename of the certificate file
   , cpDir :: !FilePath
+  -- ^ the directory containing the certificate files
   }
   deriving (Eq, Show)
 
@@ -76,12 +81,14 @@ defaultBasenames cpDir =
 
 -- | Configure some details of the generated certificates
 data Config = Config
-  { cCountry :: !(Maybe Text)
+  { cCommonName :: !Text
+  -- ^ the certificate common name
+  , cDurationDays :: !Natural
+  -- ^ the certificate's duration in days
   , cProvince :: !(Maybe Text)
   , cCity :: !(Maybe Text)
   , cOrganization :: !(Maybe Text)
-  , cCommonName :: !Text
-  , cDurationDays :: !Natural
+  , cCountry :: !(Maybe Text)
   }
   deriving (Eq, Show)
 
