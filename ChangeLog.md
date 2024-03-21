@@ -2,7 +2,7 @@
 
 `test-certs` uses [PVP Versioning][1].
 
-## 0.1.0.0 -- 2023-09-26
+## 0.1.0.0 -- 2024-03-24
 
 * Initial version.
 
