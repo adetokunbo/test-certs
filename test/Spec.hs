@@ -1,16 +1,12 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Main where
 
 import qualified Certs.TempSpec as Temp
-import System.IO (
-  BufferMode (..),
-  hSetBuffering,
-  stderr,
-  stdout,
- )
+import System.IO
+  ( BufferMode (..)
+  , hSetBuffering
+  , stderr
+  , stdout
+  )
 import Test.Hspec
 
 

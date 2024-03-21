@@ -11,21 +11,22 @@ SPDX-License-Identifier: BSD3
 
 Provides functions and/or data types that allow configuration and generation of teemporary temporary certificates
 -}
-module Test.Certs.Temp (
-  -- * @Config@
-  Config (..),
-  defaultConfig,
+module Test.Certs.Temp
+  ( -- * @Config@
+    Config (..)
+  , defaultConfig
 
-  -- * @CertPath@
-  CertPaths (..),
-  keyPath,
-  certificatePath,
-  generateAndStore,
-  withCertPathsInTmp',
-  withCertPathsInTmp,
-  withCertFilenames,
-  withCertPaths,
-) where
+    -- * @CertPath@
+  , CertPaths (..)
+  , keyPath
+  , certificatePath
+  , generateAndStore
+  , withCertPathsInTmp'
+  , withCertPathsInTmp
+  , withCertFilenames
+  , withCertPaths
+  )
+where
 
 import qualified Data.ByteString as BS
 import Data.Maybe (catMaybes)
@@ -170,12 +171,12 @@ generateAndStore cp config = do
 
 
 -- | Like 'withCertPaths', but allows the @CertPath@ filenames to be specified
-withCertFilenames ::
-  (FilePath -> CertPaths) ->
-  FilePath ->
-  Config ->
-  (CertPaths -> IO a) ->
-  IO a
+withCertFilenames
+  :: (FilePath -> CertPaths)
+  -> FilePath
+  -> Config
+  -> (CertPaths -> IO a)
+  -> IO a
 withCertFilenames mkCertPath parentDir config useCerts =
   withTempDirectory parentDir "temp-certs" $ \tmpDir -> do
     let certPaths = mkCertPath tmpDir
