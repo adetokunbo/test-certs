@@ -9,6 +9,8 @@ description:
   * It expects the openssl system libraries to be available on your system, this
     is usually the case on most modern linux distributions.
 
+  See the [README](https://github.com/adetokunbo/test-certs#readme) for a usage example.
+
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Tim Emiola
