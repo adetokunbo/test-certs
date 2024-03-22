@@ -2,6 +2,13 @@
 
 `test-certs` uses [PVP Versioning][1].
 
+## 0.1.0.2 -- 2024-03-24
+
+* Relax the bounds on filepath
+
+   * this allows uses of deprecated versions that are included in stackage
+     package sets
+
 ## 0.1.0.1 -- 2024-03-24
 
 * Relax the upper bound of the time
