@@ -2,6 +2,10 @@
 
 `test-certs` uses [PVP Versioning][1].
 
+## 0.1.0.3 -- 2024-04-01
+
+* Relax the lower bound on time
+
 ## 0.1.0.2 -- 2024-03-24
 
 * Relax the bounds on filepath
