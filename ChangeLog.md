@@ -2,6 +2,10 @@
 
 `test-certs` uses [PVP Versioning][1].
 
+## 0.1.1.0 -- 2024-06-03
+
+* Export defaultBasenames
+
 ## 0.1.0.3 -- 2024-04-01
 
 * Relax the lower bound on time
