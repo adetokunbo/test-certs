@@ -27,6 +27,7 @@ module Test.Certs.Temp
   , CertPaths (..)
   , keyPath
   , certificatePath
+  , defaultBasenames
   )
 where
 
@@ -66,9 +67,11 @@ certificatePath :: CertPaths -> FilePath
 certificatePath cp = cpDir cp </> cpCert cp
 
 
-{- | A @CertPaths using the default basenames for the certificate files
-@cpKey@ is @key.pem@
-@cpCert@ is @certificate.pem@
+{- | A @CertPaths using some default basenames for the certificate files.
+
+defaults are:
+* for 'cpKey', @key.pem@
+* for 'cpCert', @certificate.pem@
 -}
 defaultBasenames :: FilePath -> CertPaths
 defaultBasenames cpDir =

@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               test-certs
-version:            0.1.0.3
+version:            0.1.1.0
 synopsis:           create temporary SSL certificates in tests
 description:
   Its functions generate the certificates as files in a temporary directory.
