@@ -2,6 +2,10 @@
 
 `test-certs` uses [PVP Versioning][1].
 
+## 0.1.1.1 -- 2024-07-10
+
+* Updated CI and Tested-With
+
 ## 0.1.1.0 -- 2024-06-03
 
 * Export defaultBasenames
