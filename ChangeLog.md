@@ -2,6 +2,10 @@
 
 `test-certs` uses [PVP Versioning][1].
 
+## 0.1.1.2 -- 2026-01-14
+
+* Relax the upper bound on time
+
 ## 0.1.1.1 -- 2024-07-10
 
 * Updated CI and Tested-With
